@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use byte_unit::Byte;
-use judge_runner::{Code, Judge, Language, Resource, Verdict, language::*};
+use code_executor::{Code, Judge, Language, Resource, Verdict, language::*};
 use rstest::rstest;
 
 #[rstest]

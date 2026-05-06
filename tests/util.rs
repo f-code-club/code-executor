@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use judge_runner::{Code, Judge, Language};
+use code_executor::{Code, Judge, Language};
 
 const INPUT: &str = "input";
 const SOLUTION: &str = "solution";
