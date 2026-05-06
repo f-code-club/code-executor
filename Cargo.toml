@@ -1,11 +1,11 @@
 [package]
-name = "judge-runner"
+name = "code-executor"
 version = "1.0.0"
 edition = "2024"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/f-code-club/judge-runner"
-homepage = "https://github.com/f-code-club/judge-runner"
+repository = "https://github.com/f-code-club/code-executor"
+homepage = "https://github.com/f-code-club/code-executor"
 description = """
 A code runner library for online judge system
 """

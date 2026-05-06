@@ -1,4 +1,4 @@
-# Judge Runner
+# Code Executor
 
 A code runner library for online judge system.
 
@@ -16,7 +16,7 @@ A code runner library for online judge system.
 use std::time::Duration;
 
 use byte_unit::Byte;
-use judge_runner::{Code, Judge, Resource, language};
+use code_executor::{Code, Judge, Resource, language};
 
 #[tokio::main]
 async fn main() {
