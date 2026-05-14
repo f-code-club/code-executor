@@ -31,6 +31,7 @@ pub struct Judge {
     pub is_interactive: bool,
     pub resource: Resource,
     pub time_limit: Duration,
+    pub idle_time_limit: Duration,
 }
 
 #[bon]
@@ -42,6 +43,7 @@ impl Judge<Created> {
         #[builder(default = false, name = "interactive")] is_interactive: bool,
         #[builder(default)] resource: Resource,
         #[builder(default)] time_limit: Duration,
+        #[builder(default = Duration::from_secs(1))] idle_time_limit: Duration,
     ) -> io::Result<Judge<Created>> {
         let project_path = env::temp_dir().join(Uuid::new_v4().to_string());
         fs::create_dir(&project_path).await?;
@@ -73,6 +75,7 @@ impl Judge<Created> {
             is_interactive,
             resource,
             time_limit,
+            idle_time_limit,
             _state: PhantomData,
         })
     }
@@ -98,6 +101,7 @@ impl Judge {
             is_interactive: self.is_interactive,
             resource: self.resource,
             time_limit: self.time_limit,
+            idle_time_limit: self.idle_time_limit,
         }))
     }
 
@@ -129,7 +133,7 @@ impl Judge {
         cstdin.write_all(b"\n").await?;
         cstdin.flush().await?;
 
-        let sandbox = Sandbox::new(self.resource, self.time_limit)?;
+        let sandbox = Sandbox::new(self.resource, self.time_limit, self.idle_time_limit)?;
         let mut cmd = self.language.get_run_command(MAIN);
         cmd.current_dir(&self.project_path)
             .stdin(Stdio::piped())
