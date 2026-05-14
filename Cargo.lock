@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "code-executor"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "bon",
  "byte-unit",
