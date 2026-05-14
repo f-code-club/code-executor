@@ -23,20 +23,25 @@ use crate::{
 // TODO: need further tuning
 const POLL: Duration = Duration::from_millis(10);
 const MIN_CPU_USAGE_PER_POLL: Duration = Duration::from_millis(1);
-const IDLE_TIME_LIMIT: Duration = Duration::from_millis(100);
 
 pub struct Sandbox {
     pub cgroup: Cgroup,
     pub cpu_usage_limit: Duration,
     pub wall_time_limit: Duration,
+    pub idle_time_limit: Duration,
 }
 
 impl Sandbox {
-    pub fn new(resource: Resource, time_limit: Duration) -> io::Result<Sandbox> {
+    pub fn new(
+        resource: Resource,
+        time_limit: Duration,
+        idle_time_limit: Duration,
+    ) -> io::Result<Sandbox> {
         Ok(Sandbox {
             cgroup: resource.try_into()?,
             cpu_usage_limit: time_limit,
             wall_time_limit: Duration::max(time_limit * 2, time_limit + Duration::from_secs(2)),
+            idle_time_limit,
         })
     }
 
@@ -86,7 +91,7 @@ impl Sandbox {
             if cpu_usage.abs_diff(prev_cpu_usage) <= MIN_CPU_USAGE_PER_POLL {
                 match idle_start {
                     Some(idle_start) => {
-                        if idle_start.elapsed() >= IDLE_TIME_LIMIT {
+                        if idle_start.elapsed() >= self.idle_time_limit {
                             return Ok((
                                 Some(Verdict::IdleTimeLimitExceeded),
                                 cpu_usage,
