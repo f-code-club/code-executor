@@ -3,6 +3,7 @@ use std::time::Duration;
 use byte_unit::Byte;
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Verdict {
     Accepted,
     WrongAnswer,
@@ -14,6 +15,7 @@ pub enum Verdict {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Metrics {
     pub verdict: Verdict,
     pub run_time: Duration,
