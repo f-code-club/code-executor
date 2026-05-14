@@ -24,4 +24,4 @@ rand = "0.10.1"
 rstest = "0.26.1"
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde", "byte-unit/serde"]
