@@ -47,4 +47,4 @@ jobs:
 
       - name: Run test
         run: |
-          cargo llvm-cov nextest --no-tests pass --target ${{ matrix.target }}
+          cargo llvm-cov nextest --all-features --no-tests pass --target ${{ matrix.target }}
