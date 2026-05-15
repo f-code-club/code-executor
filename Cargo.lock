@@ -358,6 +358,7 @@ dependencies = [
  "bon",
  "byte-unit",
  "cgroups-rs",
+ "futures-lite",
  "rand 0.10.1",
  "rstest",
  "serde",

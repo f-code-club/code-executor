@@ -2,6 +2,7 @@ use std::{env, io, marker::PhantomData, path::PathBuf, process::Stdio, time::Dur
 
 use bon::bon;
 use byte_unit::Byte;
+use futures_lite::{Stream, StreamExt};
 use state_shift::{impl_state, type_state};
 use tokio::{
     fs,
@@ -217,6 +218,39 @@ impl Judge {
 
         // running sequentially to enable early exit, saving resources
         for input in inputs {
+            let metrics = self.run(input).await?;
+            total_run_time += metrics.run_time;
+            total_memory_usage = total_memory_usage
+                .add(metrics.memory_usage)
+                .expect("memory usage should not overflow u32");
+            count += 1;
+            if metrics.verdict != Verdict::Accepted {
+                verdict = metrics.verdict;
+                break;
+            }
+        }
+
+        Ok(AggregatedMetrics {
+            verdict,
+            average_run_time: total_run_time / count,
+            average_memory_usage: total_memory_usage
+                .divide(count as usize)
+                .expect("count must be greater than 0"),
+        })
+    }
+
+    #[require(Compiled)]
+    pub async fn streamed_batch_run(
+        &self,
+        mut inputs: impl Stream<Item = &[u8]> + std::marker::Unpin,
+    ) -> io::Result<AggregatedMetrics> {
+        let mut verdict = Verdict::Accepted;
+        let mut total_run_time = Duration::ZERO;
+        let mut total_memory_usage = Byte::default();
+        let mut count = 0;
+
+        // running sequentially to enable early exit, saving resources
+        while let Some(input) = inputs.next().await {
             let metrics = self.run(input).await?;
             total_run_time += metrics.run_time;
             total_memory_usage = total_memory_usage
