@@ -14,6 +14,7 @@ A code runner library for online judge system
 bon = "3.8.1"
 byte-unit = "5.2.0"
 cgroups-rs = "0.5.0"
+futures-lite = "2.6.1"
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 state-shift = "2.1.1"
 tokio = { version = "1.48.0", features = ["full"] }
