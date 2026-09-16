@@ -1,7 +1,7 @@
 mod cgroup;
 mod resource;
 
-use std::{io, os::unix::process::ExitStatusExt, process, time::Duration};
+use std::{io, os::unix::process::ExitStatusExt, time::Duration};
 
 use tokio::{
     process::{Child, Command},
