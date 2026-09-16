@@ -46,19 +46,7 @@ impl Sandbox {
     }
 
     pub fn spawn(&self, mut command: Command) -> io::Result<Child> {
-        let cgroup = self.cgroup.clone();
-
-        unsafe {
-            command
-                .pre_exec(move || {
-                    let id = process::id();
-
-                    cgroup
-                        .add_task_by_tgid(CgroupPid::from(id as u64))
-                        .map_err(io::Error::other)
-                })
-                .spawn()
-        }
+        command.spawn()
     }
 
     pub async fn monitor(&self, mut child: Child) -> io::Result<(Option<Verdict>, Duration, Byte)> {
