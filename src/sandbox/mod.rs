@@ -38,7 +38,7 @@ impl Sandbox {
         idle_time_limit: Duration,
     ) -> io::Result<Sandbox> {
         Ok(Sandbox {
-            cgroup: resource.try_into()?,
+            cgroup: resource.try_into().unwrap(),
             cpu_usage_limit: time_limit,
             wall_time_limit: Duration::max(time_limit * 2, time_limit + Duration::from_secs(2)),
             idle_time_limit,
@@ -67,15 +67,18 @@ impl Sandbox {
         };
         self.cgroup
             .add_task_by_tgid(CgroupPid::from(id as u64))
-            .map_err(io::Error::other)?;
+            .map_err(io::Error::other)
+            .unwrap();
         let cpu: &CpuController = self
             .cgroup
             .controller_of()
-            .ok_or(io::Error::other("Missing cpu controller"))?;
+            .ok_or(io::Error::other("Missing cpu controller"))
+            .unwrap();
         let memory: &MemController = self
             .cgroup
             .controller_of()
-            .ok_or(io::Error::other("Missing memory controller"))?;
+            .ok_or(io::Error::other("Missing memory controller"))
+            .unwrap();
 
         let start = Instant::now();
         let mut memory_usage = Byte::default();
@@ -84,7 +87,7 @@ impl Sandbox {
 
         let mut interval = interval(POLL);
 
-        while child.try_wait()?.is_none() {
+        while child.try_wait().unwrap().is_none() {
             let cpu_usage = cpu.usage();
             memory_usage = memory_usage.max(memory.usage());
 
@@ -118,7 +121,7 @@ impl Sandbox {
             interval.tick().await;
         }
 
-        let status = child.try_wait()?.unwrap();
+        let status = child.try_wait().unwrap().unwrap();
         if status.success() {
             return Ok((None, prev_cpu_usage, memory_usage));
         }

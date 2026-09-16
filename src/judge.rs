@@ -48,12 +48,12 @@ impl Judge<Created> {
         #[builder(default = Duration::from_secs(1))] idle_time_limit: Duration,
     ) -> io::Result<Judge<Created>> {
         let project_path = env::temp_dir().join(Uuid::new_v4().to_string());
-        fs::create_dir(&project_path).await?;
+        fs::create_dir(&project_path).await.unwrap();
 
         let main_path = project_path
             .join(MAIN)
             .with_extension(main.language.extension);
-        fs::write(&main_path, main.content).await?;
+        fs::write(&main_path, main.content).await.unwrap();
         if let Some(checker) = &checker {
             let mut checker_path = project_path.join(CHECKER);
             if checker.language.is_interpreted() {
@@ -65,9 +65,10 @@ impl Judge<Created> {
                 .truncate(true)
                 .mode(0o755)
                 .open(&checker_path)
-                .await?;
-            checker_file.write_all(checker.content).await?;
-            checker_file.sync_all().await?;
+                .await
+                .unwrap();
+            checker_file.write_all(checker.content).await.unwrap();
+            checker_file.sync_all().await.unwrap();
         }
 
         Ok(Judge {
@@ -89,8 +90,8 @@ impl Judge {
     #[switch_to(Compiled)]
     pub async fn compile(self) -> io::Result<Result<Judge<Compiled>, Verdict>> {
         if let Some(mut cmd) = self.language.get_compile_command(MAIN) {
-            let mut process = cmd.current_dir(&self.project_path).spawn()?;
-            let status = process.wait().await?;
+            let mut process = cmd.current_dir(&self.project_path).spawn().unwrap();
+            let status = process.wait().await.unwrap();
             if !status.success() {
                 return Ok(Err(Verdict::CompilationError));
             }
@@ -121,36 +122,38 @@ impl Judge {
     pub async fn run(&self, input: &[u8]) -> io::Result<Metrics> {
         let checker_language = self
             .checker_language
-            .ok_or(io::Error::other("Missing checker"))?;
+            .ok_or(io::Error::other("Missing checker"))
+            .unwrap();
         let mut checker = checker_language
             .get_run_command(CHECKER)
             .current_dir(&self.project_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
-            .spawn()?;
+            .spawn()
+            .unwrap();
         let mut cstdin = checker.stdin.take().unwrap();
         let mut cstdout = checker.stdout.take().unwrap();
-        cstdin.write_all(input).await?;
-        cstdin.write_all(b"\n").await?;
-        cstdin.flush().await?;
+        cstdin.write_all(input).await.unwrap();
+        cstdin.write_all(b"\n").await.unwrap();
+        cstdin.flush().await.unwrap();
 
-        let sandbox = Sandbox::new(self.resource, self.time_limit, self.idle_time_limit)?;
+        let sandbox = Sandbox::new(self.resource, self.time_limit, self.idle_time_limit).unwrap();
         let mut cmd = self.language.get_run_command(MAIN);
         cmd.current_dir(&self.project_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let mut main = sandbox.spawn(cmd)?;
+        let mut main = sandbox.spawn(cmd).unwrap();
         let mut stdin = main.stdin.take().unwrap();
         let mut stdout = main.stdout.take().unwrap();
         let mut stderr = main.stderr.take().unwrap();
 
         let monitor = tokio::spawn(async move { sandbox.monitor(main).await });
         if !self.is_interactive {
-            stdin.write_all(input).await?;
-            stdin.write_all(b"\n").await?;
-            stdin.flush().await?;
+            stdin.write_all(input).await.unwrap();
+            stdin.write_all(b"\n").await.unwrap();
+            stdin.flush().await.unwrap();
         }
         let stdin_thread =
             tokio::spawn(async move { tokio::io::copy(&mut cstdout, &mut stdin).await });
@@ -158,28 +161,28 @@ impl Judge {
             let mut out = vec![];
             let mut buffer = [0u8; BUFFER_SIZE];
             loop {
-                let n = stdout.read(&mut buffer).await?;
+                let n = stdout.read(&mut buffer).await.unwrap();
                 if n == 0 {
                     break;
                 }
                 if cstdin.write_all(&buffer[..n]).await.is_err() {
                     break;
                 }
-                cstdin.flush().await?;
+                cstdin.flush().await.unwrap();
                 out.extend_from_slice(&buffer[0..n]);
             }
 
             Ok::<_, io::Error>(out)
         });
 
-        let (verdict, run_time, memory_usage) = monitor.await.unwrap()?;
-        let checker_status = checker.wait().await?;
+        let (verdict, run_time, memory_usage) = monitor.await.unwrap().unwrap();
+        let checker_status = checker.wait().await.unwrap();
         drop(checker);
 
         let _ = stdin_thread.await;
-        let stdout = stdout_thread.await.unwrap()?;
+        let stdout = stdout_thread.await.unwrap().unwrap();
         let mut err = vec![];
-        stderr.read_to_end(&mut err).await?;
+        stderr.read_to_end(&mut err).await.unwrap();
 
         if let Some(verdict) = verdict {
             return Ok(Metrics {
@@ -218,7 +221,7 @@ impl Judge {
 
         // running sequentially to enable early exit, saving resources
         for input in inputs {
-            let metrics = self.run(input).await?;
+            let metrics = self.run(input).await.unwrap();
             total_run_time += metrics.run_time;
             total_memory_usage = total_memory_usage
                 .add(metrics.memory_usage)
@@ -251,7 +254,7 @@ impl Judge {
 
         // running sequentially to enable early exit, saving resources
         while let Some(input) = inputs.next().await {
-            let metrics = self.run(input).await?;
+            let metrics = self.run(input).await.unwrap();
             total_run_time += metrics.run_time;
             total_memory_usage = total_memory_usage
                 .add(metrics.memory_usage)
