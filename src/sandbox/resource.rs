@@ -43,8 +43,7 @@ impl TryFrom<Resource> for Cgroup {
 
         let cgroup = builder
             .build(hierarchies::auto())
-            .map_err(io::Error::other)
-            .unwrap();
+            .map_err(io::Error::other)?;
         Ok(cgroup)
     }
 }
