@@ -44,7 +44,7 @@ pub async fn should_return_accepted(
     let judge = judge.compile().await.unwrap().unwrap();
 
     for input in inputs {
-        let metrics = judge.run(input.as_bytes()).await.unwrap();
+        let metrics = judge.run(input.into_bytes()).await.unwrap();
         assert_eq!(metrics.verdict, Verdict::Accepted);
     }
 }

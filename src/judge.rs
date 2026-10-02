@@ -1,8 +1,6 @@
 use std::{env, io, marker::PhantomData, path::PathBuf, process::Stdio, time::Duration};
 
 use bon::bon;
-use byte_unit::Byte;
-use futures_lite::{Stream, StreamExt};
 use state_shift::{impl_state, type_state};
 use tokio::{
     fs,
@@ -10,7 +8,7 @@ use tokio::{
 };
 use uuid::Uuid;
 
-use crate::{AggregatedMetrics, Language, Metrics, Resource, Sandbox, Verdict};
+use crate::{Language, Metrics, Resource, Sandbox, Verdict};
 
 const MAIN: &str = "main";
 const CHECKER: &str = "checker";
@@ -118,7 +116,7 @@ impl Judge {
     }
 
     #[require(Compiled)]
-    pub async fn run(&self, input: &[u8]) -> io::Result<Metrics> {
+    pub async fn run(&self, input: Vec<u8>) -> io::Result<Metrics> {
         let checker_language = self
             .checker_language
             .ok_or(io::Error::other("Missing checker"))?;
@@ -131,7 +129,7 @@ impl Judge {
             .spawn()?;
         let mut cstdin = checker.stdin.take().unwrap();
         let mut cstdout = checker.stdout.take().unwrap();
-        cstdin.write_all(input).await?;
+        cstdin.write_all(&input).await?;
         cstdin.write_all(b"\n").await?;
         cstdin.flush().await?;
 
@@ -147,13 +145,15 @@ impl Judge {
         let mut stderr = main.stderr.take().unwrap();
 
         let monitor = tokio::spawn(async move { sandbox.monitor(main).await });
-        if !self.is_interactive {
-            stdin.write_all(input).await?;
-            stdin.write_all(b"\n").await?;
-            stdin.flush().await?;
-        }
-        let stdin_thread =
-            tokio::spawn(async move { tokio::io::copy(&mut cstdout, &mut stdin).await });
+        let is_interactive = self.is_interactive;
+        let stdin_thread = tokio::spawn(async move {
+            if !is_interactive {
+                stdin.write_all(&input).await?;
+                stdin.write_all(b"\n").await?;
+                stdin.flush().await?;
+            }
+            tokio::io::copy(&mut cstdout, &mut stdin).await
+        });
         let stdout_thread = tokio::spawn(async move {
             let mut out = vec![];
             let mut buffer = [0u8; BUFFER_SIZE];
@@ -203,72 +203,6 @@ impl Judge {
             stdout,
             stderr: err,
             memory_usage,
-        })
-    }
-
-    #[require(Compiled)]
-    pub async fn batch_run(
-        &self,
-        inputs: impl Iterator<Item = &[u8]>,
-    ) -> io::Result<AggregatedMetrics> {
-        let mut verdict = Verdict::Accepted;
-        let mut total_run_time = Duration::ZERO;
-        let mut total_memory_usage = Byte::default();
-        let mut count = 0;
-
-        // running sequentially to enable early exit, saving resources
-        for input in inputs {
-            let metrics = self.run(input).await?;
-            total_run_time += metrics.run_time;
-            total_memory_usage = total_memory_usage
-                .add(metrics.memory_usage)
-                .expect("memory usage should not overflow u32");
-            count += 1;
-            if metrics.verdict != Verdict::Accepted {
-                verdict = metrics.verdict;
-                break;
-            }
-        }
-
-        Ok(AggregatedMetrics {
-            verdict,
-            average_run_time: total_run_time / count,
-            average_memory_usage: total_memory_usage
-                .divide(count as usize)
-                .expect("count must be greater than 0"),
-        })
-    }
-
-    #[require(Compiled)]
-    pub async fn streamed_batch_run(
-        &self,
-        mut inputs: impl Stream<Item = &[u8]> + std::marker::Unpin,
-    ) -> io::Result<AggregatedMetrics> {
-        let mut verdict = Verdict::Accepted;
-        let mut total_run_time = Duration::ZERO;
-        let mut total_memory_usage = Byte::default();
-        let mut count = 0;
-
-        // running sequentially to enable early exit, saving resources
-        while let Some(input) = inputs.next().await {
-            let metrics = self.run(input).await?;
-            total_run_time += metrics.run_time;
-            total_memory_usage = total_memory_usage
-                .add(metrics.memory_usage)
-                .expect("memory usage should not overflow u32");
-            count += 1;
-            if metrics.verdict != Verdict::Accepted {
-                verdict = metrics.verdict;
-                break;
-            }
-        }
-
-        Ok(AggregatedMetrics {
-            verdict,
-            average_run_time: total_run_time / count,
-            average_memory_usage: total_memory_usage
-                .divide(count as usize)
-                .expect("count must be greater than 0"),
         })
     }
 }
