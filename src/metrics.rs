@@ -22,11 +22,3 @@ pub struct Metrics {
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
 }
-
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct AggregatedMetrics {
-    pub verdict: Verdict,
-    pub average_run_time: Duration,
-    pub average_memory_usage: Byte,
-}
