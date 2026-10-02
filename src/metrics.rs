@@ -3,7 +3,6 @@ use std::time::Duration;
 use byte_unit::Byte;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Verdict {
     Accepted,
     WrongAnswer,
